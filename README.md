@@ -1,192 +1,83 @@
-# Muchlis Bstg — Enterprise Web Application
+# Muchlis Bstg — Enterprise Export Web Application
 
 > **Full-stack Product Developer building secure, production-oriented web applications for enterprise and export businesses.**
 
-I design and build web applications that turn complex business operations into clear, reliable digital workflows — from **export sales and buyer management to quotations, orders, documents, shipments, approvals, and reporting**.
+## 🚢 ExportOS — Enterprise Export Operations
 
-## 🚢 Enterprise Export Web Application
+This repository is now the product-facing foundation for an **Enterprise Export Web Application** designed around real B2B export workflows.
 
-A representative product direction for export companies, manufacturers, trading companies, distributors, and B2B operations.
+### Demo modules
 
-### Business problems
+- Dashboard / command center
+- Buyer management
+- RFQ & quotation pipeline
+- Sales orders
+- Shipment control tower
+- Approval workflow
+- Audit trail
+- Management reporting
 
-Export operations often depend on spreadsheets, chat messages, email threads, shared folders, and disconnected systems. This creates:
+### Product workflow
 
-- duplicated data and manual re-entry
-- slow quotation and approval cycles
-- difficult document tracking
-- limited visibility across orders and shipments
-- inconsistent access to sensitive commercial data
-- weak auditability
-- fragmented buyer and supplier information
+Buyer → RFQ → Quotation → Approval → Sales Order → Export Documents → Shipment → Delivery → Reporting
 
-### Product solution
+## Repository structure
 
-A centralized **Enterprise Export Management Web Application** with role-based workflows and a single operational source of truth.
+```text
+apps/
+  web/
+    index.html       # responsive enterprise dashboard
+    styles.css       # responsive UI system
+    app.js           # demo interactions
 
-\`\`\`text
-Lead / Buyer
-    ↓
-RFQ → Quotation → Approval
-    ↓
-Sales Order
-    ↓
-Export Documents
-    ↓
-Shipment & Logistics
-    ↓
-Delivery → Reporting
-\`\`\`
+docs/
+  product-spec.md    # product scope, users, workflow and API direction
+```
 
-## Core modules
+## Engineering direction
 
-| Module | Capability |
-|---|---|
-| CRM / Buyers | Buyer profiles, contacts, markets, communication history |
-| RFQ | Request intake, products, quantities, target prices, deadlines |
-| Quotation | Pricing, currency, Incoterms, validity, approval workflow |
-| Orders | Sales order lifecycle and fulfillment status |
-| Export Documents | Invoice, packing list, shipping documents, document status |
-| Shipment | Container/shipment tracking, milestones, ETD/ETA |
-| Approvals | Role-based review and high-impact action approval |
-| Users & RBAC | Owner, manager, sales, operations, finance and read-only roles |
-| Audit Trail | Who changed what, when, and on which business entity |
-| Dashboard | Sales pipeline, active orders, shipments, exceptions and KPIs |
-| Reporting | Operational and management reporting with exportable data |
+The UI is intentionally separated from the future API layer so the product can evolve toward:
 
-## Enterprise architecture
-
-\`\`\`text
-┌───────────────────────────────────────────────┐
-│              Web Application                  │
-│        Next.js / TypeScript / UI              │
-└───────────────────────┬───────────────────────┘
-                        │ HTTPS / REST API
-┌───────────────────────▼───────────────────────┐
-│              Application API                  │
-│ Auth • RBAC • Validation • Business Rules     │
-│ Workflows • Audit • Notifications             │
-└───────────────┬─────────────────┬─────────────┘
-                │                 │
-        ┌───────▼───────┐ ┌──────▼──────────┐
-        │ PostgreSQL    │ │ External Systems │
-        │ Data + Audit  │ │ ERP / CRM /      │
-        │               │ │ Logistics / S3   │
-        └───────────────┘ └─────────────────┘
-\`\`\`
-
-### Engineering stack
-
-- **Frontend:** Next.js, React, TypeScript
-- **Backend:** Laravel / Node.js, REST API
+- **Frontend:** Next.js / React / TypeScript
+- **Backend:** REST API with Node.js or Laravel
 - **Database:** PostgreSQL / Supabase
-- **Authentication:** secure sessions, RBAC, authorization checks
-- **Testing:** unit, integration, API and end-to-end testing
+- **Authentication:** secure sessions + RBAC
+- **Quality:** unit, integration, API and E2E tests
 - **CI/CD:** GitHub Actions
-- **Infrastructure:** cloud-ready, environment-separated deployment
-- **Observability:** structured logs, health checks, audit events
-- **Security:** least privilege, secure defaults, validation, auditability
+- **Observability:** health checks, structured logs and audit events
+- **Security:** least privilege, validation, transactional mutations and production approval gates
 
-## Security & reliability
+## Enterprise security requirements
 
-Enterprise applications need more than a working UI.
+The production implementation will require:
 
-This approach includes:
+1. Server-side authorization for protected operations
+2. Tenant isolation for multi-company deployments
+3. Validated and bounded inputs
+4. Parameterized database queries
+5. Transactional business-critical mutations
+6. Secure session and cookie configuration
+7. Immutable audit history for sensitive actions
+8. Structured logs with correlation IDs
+9. Automated security and quality gates
+10. Human approval for high-impact production actions
 
-- server-side authorization for every protected operation
-- role-based access control
-- input validation and bounded request bodies
-- secure session handling
-- CSRF / Origin protection for browser state changes
-- parameterized database queries
-- transactional business mutations
-- immutable-style audit events
-- production-safe configuration
-- automated quality gates before deployment
-- human approval for high-impact production actions
+## Client use cases
 
-## Delivery workflow
+Built as a portfolio foundation for:
 
-\`\`\`text
-Discovery
-   ↓
-Brief → PRD → User Stories → Acceptance Criteria
-   ↓
-Architecture / ADR
-   ↓
-Figma → Design System → Responsive UI
-   ↓
-Frontend + API + Database
-   ↓
-Tests + Security Checks
-   ↓
-GitHub Actions CI
-   ↓
-Staging
-   ↓
-Human Approval
-   ↓
-Production
-\`\`\`
+- Exporters and manufacturers
+- Trading companies
+- B2B distributors
+- International sales teams
+- Logistics and shipment operations
+- Enterprise back-office workflows
 
-## What I can build for a client
+## Product development approach
 
-### Export & B2B
+**Business problem → PRD → UX/UI → Architecture → Implementation → Testing → CI/CD → Staging → Human approval → Production**
 
-- Export management portals
-- Buyer / supplier portals
-- RFQ and quotation systems
-- Order management systems
-- Shipment tracking dashboards
-- Export document workflows
-- Multi-role approval systems
-
-### Enterprise operations
-
-- Internal business dashboards
-- Workflow and approval platforms
-- CRM / ERP integrations
-- Operational reporting systems
-- Multi-tenant business applications
-- Secure admin panels and back-office systems
-
-## Product development standard
-
-I focus on **business outcomes and maintainable software**, not only feature delivery.
-
-Every product is approached through:
-
-1. **Discovery** — understand the business workflow and constraints.
-2. **Product design** — translate requirements into usable flows.
-3. **Architecture** — make explicit technical decisions.
-4. **Implementation** — build modular, testable features.
-5. **Quality** — verify behavior, security and performance.
-6. **Deployment** — automate repeatable delivery.
-7. **Operations** — monitor, audit and continuously improve.
-
-## Portfolio
-
-### Full-stack Product Development
-
-Technical engineering portfolio covering:
-
-- Product discovery and technical planning
-- Frontend and backend engineering
-- API and database design
-- Authentication and authorization
-- Automated testing and quality gates
-- CI/CD and observability
-- Secure production-oriented delivery
-
-**Repository:** `muchlis-bstg/Full-stack-product-development`
-
-## Client engagement
-
-For an enterprise export application, I can work from:
-
-**Business problem → Product specification → UX/UI → Architecture → Development → Testing → Deployment**
-
-The goal is a system that is **usable by people, measurable by management, and maintainable by engineering teams**.
+The goal is not only a polished interface, but a **secure, measurable and maintainable business system**.
 
 ---
 
@@ -194,4 +85,4 @@ The goal is a system that is **usable by people, measurable by management, and m
 
 **Full-stack Product Developer · Enterprise Web Applications · Export & B2B Systems**
 
-Building practical digital products with a focus on **security, reliability, maintainability, and business value**.
+Focus: **security · reliability · maintainability · business value**
