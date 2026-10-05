@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Enterprise Export Operations dashboard.">
+<title>ExportOS — Enterprise Export Operations</title>
+<link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+<div class="app-shell">
+<aside class="sidebar">
+<div class="brand"><span class="brand-mark">E</span><div><strong>ExportOS</strong><small>Enterprise Operations</small></div></div>
+<nav>
+<p class="nav-label">WORKSPACE</p>
+<a class="active" href="#dashboard">Dashboard</a><a href="#buyers">Buyers</a><a href="#rfq">RFQ & Quotations</a><a href="#orders">Orders</a><a href="#shipments">Shipments</a>
+<p class="nav-label">CONTROL</p><a href="#approvals">Approvals <span class="badge">4</span></a><a href="#audit">Audit trail</a><a href="#reports">Reports</a>
+</nav>
+<div class="sidebar-footer"><span class="status-dot"></span> Production workspace<br><small>EU / APAC operations</small></div>
+</aside>
+<main class="main">
+<header class="topbar"><div><button class="mobile-menu">☰</button><div><span class="eyebrow">EXPORT OPERATIONS</span><h1>Command Center</h1></div></div><div class="top-actions"><button class="icon-btn">◌</button><div class="user"><span class="avatar">MB</span><div><strong>Muchlis Bstg</strong><small>Operations Admin</small></div></div></div></header>
+<section id="dashboard" class="content">
+<div class="hero"><div><span class="pill">Q4 OPERATIONS</span><h2>Good morning. Your export pipeline is under control.</h2><p>Track commercial activity, fulfillment and exceptions from one operational workspace.</p></div><button class="primary" data-action="new-quote">+ New quotation</button></div>
+<div class="metrics"><article><span>Pipeline value</span><strong>$2.84M</strong><small class="up">↑ 18.4% vs last month</small></article><article><span>Open orders</span><strong>38</strong><small class="up">↑ 6 this week</small></article><article><span>In transit</span><strong>14</strong><small>9 containers · 5 air</small></article><article><span>Pending approvals</span><strong>4</strong><small class="warn">2 require attention</small></article></div>
+<div class="grid-2">
+<section class="panel"><div class="panel-head"><div><span class="eyebrow">COMMERCIAL</span><h3>Quotation pipeline</h3></div><a href="#rfq">View all →</a></div><div class="pipeline"><div><span>RFQ received</span><strong>$680K</strong><i style="width:82%"></i></div><div><span>Quoted</span><strong>$510K</strong><i style="width:63%"></i></div><div><span>Negotiation</span><strong>$320K</strong><i style="width:40%"></i></div><div><span>Won</span><strong>$210K</strong><i style="width:26%"></i></div></div></section>
+<section class="panel"><div class="panel-head"><div><span class="eyebrow">EXCEPTIONS</span><h3>Needs attention</h3></div><a href="#audit">Audit →</a></div><ul class="alerts"><li><span class="alert-icon">!</span><div><strong>PO-2026-1048</strong><small>Commercial invoice pending approval</small></div><span class="tag danger">High</span></li><li><span class="alert-icon">!</span><div><strong>SHP-2026-088</strong><small>ETA changed by carrier</small></div><span class="tag warning">Review</span></li><li><span class="alert-icon">!</span><div><strong>RFQ-2026-219</strong><small>Quotation expires in 2 days</small></div><span class="tag neutral">Watch</span></li></ul></section>
+</div>
+<section id="orders" class="panel"><div class="panel-head"><div><span class="eyebrow">FULFILLMENT</span><h3>Recent orders</h3></div><a href="#orders">Manage orders →</a></div><div class="table-wrap"><table><thead><tr><th>Order</th><th>Buyer</th><th>Value</th><th>Status</th><th>Shipment</th><th>Updated</th></tr></thead><tbody>
+<tr><td><strong>SO-2026-1048</strong><small>PO-88931</small></td><td>Nordic Retail Group</td><td>$184,500</td><td><span class="tag success">In production</span></td><td>Not booked</td><td>12 min ago</td></tr>
+<tr><td><strong>SO-2026-1047</strong><small>PO-88902</small></td><td>Pacific Home Co.</td><td>$92,300</td><td><span class="tag info">Ready to ship</span></td><td>SHP-088</td><td>1 hr ago</td></tr>
+<tr><td><strong>SO-2026-1045</strong><small>PO-88871</small></td><td>Alpine Trade GmbH</td><td>$247,800</td><td><span class="tag success">In transit</span></td><td>SHP-083</td><td>3 hrs ago</td></tr>
+<tr><td><strong>SO-2026-1041</strong><small>PO-88792</small></td><td>Atlas Distribution</td><td>$76,450</td><td><span class="tag neutral">Delivered</span></td><td>SHP-079</td><td>Yesterday</td></tr>
+</tbody></table></div></section>
+<section id="shipments" class="panel"><div class="panel-head"><div><span class="eyebrow">LOGISTICS</span><h3>Shipment control tower</h3></div><a href="#shipments">Open control tower →</a></div><div class="shipments">
+<article><span class="tag success">ON TRACK</span><strong>SHP-2026-083</strong><p>Jakarta → Rotterdam · MSC</p><div class="progress"><i style="width:72%"></i></div><small>ETA 18 Nov · 72% journey</small></article>
+<article><span class="tag warning">ETA CHANGED</span><strong>SHP-2026-088</strong><p>Surabaya → Hamburg · Maersk</p><div class="progress"><i style="width:46%"></i></div><small>ETA 24 Nov · +2 days</small></article>
+<article><span class="tag info">BOOKED</span><strong>SHP-2026-091</strong><p>Makassar → Busan · ONE</p><div class="progress"><i style="width:18%"></i></div><small>ETD 20 Nov · Documentation</small></article>
+</div></section>
+<section id="audit" class="panel"><div class="panel-head"><div><span class="eyebrow">GOVERNANCE</span><h3>Recent audit activity</h3></div><a href="#audit">Full audit trail →</a></div><div class="activity">
+<div><span class="activity-icon">✓</span><div><strong>Quotation QT-2026-219 approved</strong><small>Finance Manager · 8 minutes ago · $118,000</small></div></div>
+<div><span class="activity-icon">↗</span><div><strong>Shipment SHP-2026-088 ETA updated</strong><small>Logistics · 42 minutes ago · Carrier webhook</small></div></div>
+<div><span class="activity-icon">+</span><div><strong>Buyer Nordic Retail Group created</strong><small>Sales · 2 hours ago · EU market</small></div></div>
+</div></section>
+</section></main></div>
+<div id="toast" class="toast" role="status" aria-live="polite"></div><script src="./app.js"></script>
+</body></html>
