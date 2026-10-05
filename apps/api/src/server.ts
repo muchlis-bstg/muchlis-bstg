@@ -53,6 +53,52 @@ await c.query("INSERT INTO audit_events(id,actor_user_id,action,entity_type,enti
 });
 return json(res,200,{id,status});
 }
+if(req.method==="GET"&&url.pathname==="/api/quotations"){
+const q=await pool.query("SELECT q.id,q.rfq_id,q.version,q.status,q.currency,q.total_value,q.valid_until,q.notes,q.created_at,r.reference FROM quotations q JOIN rfqs r ON r.id=q.rfq_id ORDER BY q.created_at DESC LIMIT 100");
+return json(res,200,{items:q.rows});
+}
+if(req.method==="POST"&&url.pathname==="/api/quotations"){
+if(!["ADMIN","MANAGER","SALES"].includes(user.role))return json(res,403,{code:"FORBIDDEN",message:"Insufficient role"});
+const b=await body(req),rfqId=String(b.rfqId??"").trim(),currency=String(b.currency??"").trim().toUpperCase(),totalValue=Number(b.totalValue),validUntil=b.validUntil?String(b.validUntil):null,notes=b.notes?String(b.notes).slice(0,2000):null;
+if(!rfqId||currency.length!==3||!Number.isFinite(totalValue)||totalValue<0)return json(res,400,{code:"INVALID_INPUT",message:"rfqId, 3-letter currency and non-negative totalValue are required"});
+const rfq=await pool.query<{id:string,status:string}>("SELECT id,status FROM rfqs WHERE id=$1",[rfqId]);
+if(!rfq.rowCount)return json(res,404,{code:"NOT_FOUND",message:"RFQ not found"});
+if(rfq.rows[0].status!=="OPEN")return json(res,409,{code:"INVALID_RFQ_STATUS",message:"Quotation can only be created for an OPEN RFQ"});
+const v=await pool.query<{version:number}>("SELECT COALESCE(MAX(version),0)+1 AS version FROM quotations WHERE rfq_id=$1",[rfqId]);
+const version=Number(v.rows[0].version),id=randomUUID();
+await withTx(pool,async(c)=>{
+await c.query("INSERT INTO quotations(id,rfq_id,version,status,currency,total_value,valid_until,notes,created_by) VALUES($1,$2,$3,'DRAFT',$4,$5,$6,$7,$8)",[id,rfqId,version,currency,totalValue,validUntil,notes,user.id]);
+await c.query("INSERT INTO audit_events(id,actor_user_id,action,entity_type,entity_id,metadata) VALUES($1,$2,'CREATED','quotation',$3,$4::jsonb)",[randomUUID(),user.id,id,JSON.stringify({rfqId,version,totalValue})]);
+});
+return json(res,201,{id,rfqId,version,status:"DRAFT",currency,totalValue});
+}
+if(req.method==="POST"&&url.pathname.match(/^\/api\/quotations\/[^/]+\/submit$/)){
+if(!["ADMIN","MANAGER","SALES"].includes(user.role))return json(res,403,{code:"FORBIDDEN",message:"Insufficient role"});
+const id=url.pathname.split("/")[3];
+const q=await pool.query<{status:string,rfq_id:string}>("SELECT status,rfq_id FROM quotations WHERE id=$1",[id]);
+if(!q.rowCount)return json(res,404,{code:"NOT_FOUND",message:"Quotation not found"});
+if(q.rows[0].status!=="DRAFT")return json(res,409,{code:"INVALID_TRANSITION",message:"Only draft quotations can be submitted"});
+await withTx(pool,async(c)=>{
+await c.query("UPDATE quotations SET status='PENDING_APPROVAL' WHERE id=$1",[id]);
+await c.query("UPDATE rfqs SET status='QUOTED' WHERE id=$1 AND status='OPEN'",[q.rows[0].rfq_id]);
+await c.query("INSERT INTO audit_events(id,actor_user_id,action,entity_type,entity_id,metadata) VALUES($1,$2,'SUBMITTED','quotation',$3,'{}'::jsonb)",[randomUUID(),user.id,id]);
+});
+return json(res,200,{id,status:"PENDING_APPROVAL"});
+}
+if(req.method==="POST"&&url.pathname.match(/^\/api\/quotations\/[^/]+\/decision$/)){
+if(!["ADMIN","MANAGER","FINANCE"].includes(user.role))return json(res,403,{code:"FORBIDDEN",message:"Approval role required"});
+const id=url.pathname.split("/")[3],b=await body(req),decision=String(b.decision??"").toUpperCase(),comment=b.comment?String(b.comment).slice(0,2000):null;
+if(!["APPROVED","REJECTED"].includes(decision))return json(res,400,{code:"INVALID_DECISION",message:"Decision must be APPROVED or REJECTED"});
+const q=await pool.query<{status:string}>("SELECT status FROM quotations WHERE id=$1",[id]);
+if(!q.rowCount)return json(res,404,{code:"NOT_FOUND",message:"Quotation not found"});
+if(q.rows[0].status!=="PENDING_APPROVAL")return json(res,409,{code:"INVALID_TRANSITION",message:"Quotation is not pending approval"});
+await withTx(pool,async(c)=>{
+await c.query("INSERT INTO quotation_approvals(id,quotation_id,approver_user_id,decision,comment) VALUES($1,$2,$3,$4,$5)",[randomUUID(),id,user.id,decision,comment]);
+await c.query("UPDATE quotations SET status=$1 WHERE id=$2",[decision==="APPROVED"?"APPROVED":"REJECTED",id]);
+await c.query("INSERT INTO audit_events(id,actor_user_id,action,entity_type,entity_id,metadata) VALUES($1,$2,'DECISIONED','quotation',$3,$4::jsonb)",[randomUUID(),user.id,id,JSON.stringify({decision,comment})]);
+});
+return json(res,200,{id,status:decision});
+}
 if(req.method==="GET"&&url.pathname==="/api/dashboard"){const [buyers,rfqs]=await Promise.all([pool.query("SELECT count(*)::int AS count FROM buyers WHERE status='ACTIVE'"),pool.query("SELECT count(*)::int AS count,COALESCE(sum(estimated_value),0)::numeric AS value FROM rfqs WHERE status IN ('OPEN','QUOTED')")]);return json(res,200,{buyers:buyers.rows[0].count,openRfqs:rfqs.rows[0].count,pipelineValue:rfqs.rows[0].value})}
 return json(res,404,{code:"NOT_FOUND",message:"Route not found"});
 }catch(e:any){if(e?.code==="23505")return json(res,409,{code:"CONFLICT",message:"Resource already exists"});return json(res,e?.status??500,{code:"INTERNAL_ERROR",message:e?.status?e.message:"Internal server error"})}}}
