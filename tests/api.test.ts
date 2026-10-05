@@ -94,11 +94,13 @@ integration("full export workflow persists through PostgreSQL", async () => {
   }, salesCookie);
   assert.equal(submit.response.status, 200);
 
+  await pool.query("UPDATE users SET role='FINANCE' WHERE email=$1", [`sales-${suffix}@example.test`]);
   const selfApproval = await request(`/api/quotations/${quotation.data.id}/decision`, {
     method: "POST",
     body: JSON.stringify({ decision: "APPROVED" }),
   }, salesCookie);
-  assert.equal(selfApproval.response.status, 403);
+  assert.equal(selfApproval.response.status, 409);
+  await pool.query("UPDATE users SET role='SALES' WHERE email=$1", [`sales-${suffix}@example.test`]);
 
   const approval = await request(`/api/quotations/${quotation.data.id}/decision`, {
     method: "POST",
@@ -157,7 +159,13 @@ integration("full export workflow persists through PostgreSQL", async () => {
 
   const audit = await request("/api/audit?limit=100", {}, financeCookie);
   assert.equal(audit.response.status, 200);
-  assert.ok(audit.data.items.length >= 6);\n\n  const filteredAudit = await request("/api/audit?entityType=shipment&action=STATUS_CHANGED&limit=10", {}, financeCookie);\n  assert.equal(filteredAudit.response.status, 200);\n  assert.ok(filteredAudit.data.pagination);\n  assert.ok(filteredAudit.data.pagination.total >= 2);\n  assert.equal(filteredAudit.data.pagination.hasMore, false);
+  assert.ok(audit.data.items.length >= 6);
+
+  const filteredAudit = await request("/api/audit?entityType=shipment&action=STATUS_CHANGED&limit=10", {}, financeCookie);
+  assert.equal(filteredAudit.response.status, 200);
+  assert.ok(filteredAudit.data.pagination);
+  assert.ok(filteredAudit.data.pagination.total >= 2);
+  assert.equal(filteredAudit.data.pagination.hasMore, false);
 });
 
 integration.after(async () => {
