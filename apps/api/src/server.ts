@@ -99,6 +99,59 @@ await c.query("INSERT INTO audit_events(id,actor_user_id,action,entity_type,enti
 });
 return json(res,200,{id,status:decision});
 }
+if(req.method==="GET"&&url.pathname==="/api/orders"){
+const q=await pool.query("SELECT o.id,o.order_number,o.status,o.currency,o.total_value,o.created_at,o.quotation_id FROM sales_orders o ORDER BY o.created_at DESC LIMIT 100");
+return json(res,200,{items:q.rows});
+}
+if(req.method==="POST"&&url.pathname==="/api/orders"){
+if(!["ADMIN","MANAGER","SALES","OPERATIONS"].includes(user.role))return json(res,403,{code:"FORBIDDEN",message:"Insufficient role"});
+const b=await body(req),quotationId=String(b.quotationId??"").trim(),orderNumber=String(b.orderNumber??"").trim();
+if(!quotationId||!orderNumber||orderNumber.length>80)return json(res,400,{code:"INVALID_INPUT",message:"quotationId and orderNumber are required"});
+const q=await pool.query<{status:string,currency:string,total_value:string}>("SELECT status,currency,total_value FROM quotations WHERE id=$1",[quotationId]);
+if(!q.rowCount)return json(res,404,{code:"NOT_FOUND",message:"Quotation not found"});
+if(q.rows[0].status!=="APPROVED")return json(res,409,{code:"INVALID_QUOTATION_STATUS",message:"Only approved quotations can become orders"});
+const id=randomUUID();
+await withTx(pool,async(c)=>{
+await c.query("INSERT INTO sales_orders(id,quotation_id,order_number,status,currency,total_value,created_by) VALUES($1,$2,$3,'CONFIRMED',$4,$5,$6)",[id,quotationId,orderNumber,q.rows[0].currency,q.rows[0].total_value,user.id]);
+await c.query("INSERT INTO audit_events(id,actor_user_id,action,entity_type,entity_id,metadata) VALUES($1,$2,'CREATED','sales_order',$3,$4::jsonb)",[randomUUID(),user.id,id,JSON.stringify({quotationId,orderNumber})]);
+});
+return json(res,201,{id,quotationId,orderNumber,status:"CONFIRMED",currency:q.rows[0].currency,totalValue:q.rows[0].total_value});
+}
+if(req.method==="GET"&&url.pathname==="/api/shipments"){
+const q=await pool.query("SELECT s.id,s.sales_order_id,s.tracking_number,s.carrier,s.status,s.etd,s.eta,s.created_at,o.order_number FROM shipments s JOIN sales_orders o ON o.id=s.sales_order_id ORDER BY s.created_at DESC LIMIT 100");
+return json(res,200,{items:q.rows});
+}
+if(req.method==="POST"&&url.pathname==="/api/shipments"){
+if(!["ADMIN","MANAGER","OPERATIONS"].includes(user.role))return json(res,403,{code:"FORBIDDEN",message:"Operations role required"});
+const b=await body(req),orderId=String(b.salesOrderId??"").trim(),carrier=String(b.carrier??"").trim(),tracking=b.trackingNumber?String(b.trackingNumber).trim():null,etd=b.etd?String(b.etd):null,eta=b.eta?String(b.eta):null;
+if(!orderId||!carrier||carrier.length>120)return json(res,400,{code:"INVALID_INPUT",message:"salesOrderId and carrier are required"});
+const order=await pool.query<{status:string}>("SELECT status FROM sales_orders WHERE id=$1",[orderId]);
+if(!order.rowCount)return json(res,404,{code:"NOT_FOUND",message:"Sales order not found"});
+if(["CANCELLED","DELIVERED"].includes(order.rows[0].status))return json(res,409,{code:"INVALID_ORDER_STATUS",message:"Order cannot be shipped in its current status"});
+const id=randomUUID();
+await withTx(pool,async(c)=>{
+await c.query("INSERT INTO shipments(id,sales_order_id,tracking_number,carrier,status,etd,eta) VALUES($1,$2,$3,$4,'BOOKED',$5,$6)",[id,orderId,tracking,carrier,etd,eta]);
+await c.query("UPDATE sales_orders SET status='PROCESSING' WHERE id=$1",[orderId]);
+await c.query("INSERT INTO audit_events(id,actor_user_id,action,entity_type,entity_id,metadata) VALUES($1,$2,'CREATED','shipment',$3,$4::jsonb)",[randomUUID(),user.id,id,JSON.stringify({orderId,carrier,tracking})]);
+});
+return json(res,201,{id,salesOrderId:orderId,status:"BOOKED",carrier,trackingNumber:tracking});
+}
+if(req.method==="PATCH"&&url.pathname.startsWith("/api/shipments/")){
+if(!["ADMIN","MANAGER","OPERATIONS"].includes(user.role))return json(res,403,{code:"FORBIDDEN",message:"Operations role required"});
+const id=url.pathname.split("/").pop()??"",b=await body(req),status=String(b.status??"").toUpperCase();
+if(!["BOOKED","IN_TRANSIT","ARRIVED","DELIVERED","EXCEPTION"].includes(status))return json(res,400,{code:"INVALID_STATUS",message:"Unsupported shipment status"});
+const current=await pool.query<{status:string,sales_order_id:string}>("SELECT status,sales_order_id FROM shipments WHERE id=$1",[id]);
+if(!current.rowCount)return json(res,404,{code:"NOT_FOUND",message:"Shipment not found"});
+const allowed:Record<string,string[]>={BOOKED:["IN_TRANSIT","EXCEPTION"],IN_TRANSIT:["ARRIVED","EXCEPTION"],ARRIVED:["DELIVERED","EXCEPTION"],EXCEPTION:["IN_TRANSIT","ARRIVED"],DELIVERED:[]};
+if(!allowed[current.rows[0].status]?.includes(status))return json(res,409,{code:"INVALID_TRANSITION",message:`Cannot move shipment from ${current.rows[0].status} to ${status}`});
+await withTx(pool,async(c)=>{
+await c.query("UPDATE shipments SET status=$1 WHERE id=$2",[status,id]);
+if(status==="DELIVERED")await c.query("UPDATE sales_orders SET status='DELIVERED' WHERE id=$1",[current.rows[0].sales_order_id]);
+else if(status==="IN_TRANSIT")await c.query("UPDATE sales_orders SET status='SHIPPED' WHERE id=$1",[current.rows[0].sales_order_id]);
+await c.query("INSERT INTO audit_events(id,actor_user_id,action,entity_type,entity_id,metadata) VALUES($1,$2,'STATUS_CHANGED','shipment',$3,$4::jsonb)",[randomUUID(),user.id,id,JSON.stringify({from:current.rows[0].status,to:status})]);
+});
+return json(res,200,{id,status});
+}
 if(req.method==="GET"&&url.pathname==="/api/dashboard"){const [buyers,rfqs]=await Promise.all([pool.query("SELECT count(*)::int AS count FROM buyers WHERE status='ACTIVE'"),pool.query("SELECT count(*)::int AS count,COALESCE(sum(estimated_value),0)::numeric AS value FROM rfqs WHERE status IN ('OPEN','QUOTED')")]);return json(res,200,{buyers:buyers.rows[0].count,openRfqs:rfqs.rows[0].count,pipelineValue:rfqs.rows[0].value})}
 return json(res,404,{code:"NOT_FOUND",message:"Route not found"});
 }catch(e:any){if(e?.code==="23505")return json(res,409,{code:"CONFLICT",message:"Resource already exists"});return json(res,e?.status??500,{code:"INTERNAL_ERROR",message:e?.status?e.message:"Internal server error"})}}}
