@@ -8,7 +8,8 @@
     "dev": "tsx apps/api/src/index.ts",
     "typecheck": "tsc --noEmit",
     "test": "tsx --test",
-    "build": "tsc"
+    "build": "tsc",
+    "migrate": "tsx scripts/migrate.ts"
   },
   "dependencies": {
     "pg": "^8.16.3"
