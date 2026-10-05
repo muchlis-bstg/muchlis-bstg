@@ -17,6 +17,25 @@ jobs:
   quality:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: exportos
+          POSTGRES_PASSWORD: exportos
+          POSTGRES_DB: exportos_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U exportos -d exportos_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://exportos:exportos@localhost:5432/exportos_test
+      NODE_ENV: test
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -35,6 +54,9 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: Apply database migrations
+        run: npm run migrate
 
       - name: Test
         run: npm test
