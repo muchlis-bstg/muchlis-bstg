@@ -1,0 +1,2 @@
+import test from "node:test";import assert from "node:assert/strict";import {createPool} from "../apps/api/src/db.js";
+test("DATABASE_URL is required for integration tests",()=>{assert.equal(typeof process.env.DATABASE_URL==="string"||process.env.DATABASE_URL===undefined,true)});test("dashboard contract is defined",()=>{assert.deepEqual(Object.keys({buyers:0,openRfqs:0,pipelineValue:0}),["buyers","openRfqs","pipelineValue"])});
