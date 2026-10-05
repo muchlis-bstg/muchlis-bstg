@@ -4,7 +4,7 @@ const body=async(req:any)=>{let raw="";for await(const chunk of req){raw+=chunk;
 const hashToken=(t:string)=>createHash("sha256").update(t).digest("hex");
 const passwordHash=(p:string)=>{const salt=randomBytes(16).toString("hex");return salt+":"+scryptSync(p,salt,64).toString("hex")};
 const verifyPassword=(p:string,stored:string)=>{const [salt,hex]=stored.split(":");if(!salt||!hex)return false;const a=Buffer.from(hex,"hex"),b=scryptSync(p,salt,a.length);return a.length===b.length&&timingSafeEqual(a,b)};
-const cookies=(req:any)=>Object.fromEntries((req.headers.cookie??"").split(";").map((x:string)=>x.trim().split("=",2)).filter((x:string[])=>x.length===2));
+const isoDate=(value:unknown)=>typeof value==="string"&&/^\\d{4}-\\d{2}-\\d{2}$/.test(value)&&!Number.isNaN(Date.parse(value+"T00:00:00Z"));\nconst cookies=(req:any)=>Object.fromEntries((req.headers.cookie??"").split(";").map((x:string)=>x.trim().split("=",2)).filter((x:string[])=>x.length===2));
 export function createApp(pool:Pool){return async(req:any,res:any)=>{res.setHeader("X-Content-Type-Options","nosniff");res.setHeader("X-Frame-Options","DENY");res.setHeader("Referrer-Policy","no-referrer");const url=new URL(req.url,"http://localhost");
 if(req.method==="OPTIONS"){res.statusCode=204;return res.end()}
 if(req.method==="GET"&&url.pathname==="/health"){try{await pool.query("SELECT 1");return json(res,200,{status:"ok"})}catch{return json(res,503,{status:"degraded"})}}
@@ -60,7 +60,7 @@ return json(res,200,{items:q.rows});
 if(req.method==="POST"&&url.pathname==="/api/quotations"){
 if(!["ADMIN","MANAGER","SALES"].includes(user.role))return json(res,403,{code:"FORBIDDEN",message:"Insufficient role"});
 const b=await body(req),rfqId=String(b.rfqId??"").trim(),currency=String(b.currency??"").trim().toUpperCase(),totalValue=Number(b.totalValue),validUntil=b.validUntil?String(b.validUntil):null,notes=b.notes?String(b.notes).slice(0,2000):null;
-if(!rfqId||currency.length!==3||!Number.isFinite(totalValue)||totalValue<0)return json(res,400,{code:"INVALID_INPUT",message:"rfqId, 3-letter currency and non-negative totalValue are required"});
+if(!rfqId||currency.length!==3||!Number.isFinite(totalValue)||totalValue<0||validUntil!==null&&!isoDate(validUntil))return json(res,400,{code:"INVALID_INPUT",message:"rfqId, 3-letter currency, non-negative totalValue and validUntil (YYYY-MM-DD) are required"});
 const rfq=await pool.query<{id:string,status:string}>("SELECT id,status FROM rfqs WHERE id=$1",[rfqId]);
 if(!rfq.rowCount)return json(res,404,{code:"NOT_FOUND",message:"RFQ not found"});
 if(rfq.rows[0].status!=="OPEN")return json(res,409,{code:"INVALID_RFQ_STATUS",message:"Quotation can only be created for an OPEN RFQ"});
@@ -89,12 +89,12 @@ if(req.method==="POST"&&url.pathname.match(/^\/api\/quotations\/[^/]+\/decision$
 if(!["ADMIN","MANAGER","FINANCE"].includes(user.role))return json(res,403,{code:"FORBIDDEN",message:"Approval role required"});
 const id=url.pathname.split("/")[3],b=await body(req),decision=String(b.decision??"").toUpperCase(),comment=b.comment?String(b.comment).slice(0,2000):null;
 if(!["APPROVED","REJECTED"].includes(decision))return json(res,400,{code:"INVALID_DECISION",message:"Decision must be APPROVED or REJECTED"});
-const q=await pool.query<{status:string}>("SELECT status FROM quotations WHERE id=$1",[id]);
+const q=await pool.query<{status:string,created_by:string,rfq_id:string}>("SELECT status,created_by,rfq_id FROM quotations WHERE id=$1",[id]);
 if(!q.rowCount)return json(res,404,{code:"NOT_FOUND",message:"Quotation not found"});
-if(q.rows[0].status!=="PENDING_APPROVAL")return json(res,409,{code:"INVALID_TRANSITION",message:"Quotation is not pending approval"});
+if(q.rows[0].status!=="PENDING_APPROVAL")return json(res,409,{code:"INVALID_TRANSITION",message:"Quotation is not pending approval"});\nif(q.rows[0].created_by===user.id)return json(res,409,{code:"SEPARATION_OF_DUTIES",message:"The quotation creator cannot approve or reject the same quotation"});
 await withTx(pool,async(c)=>{
 await c.query("INSERT INTO quotation_approvals(id,quotation_id,approver_user_id,decision,comment) VALUES($1,$2,$3,$4,$5)",[randomUUID(),id,user.id,decision,comment]);
-await c.query("UPDATE quotations SET status=$1 WHERE id=$2",[decision==="APPROVED"?"APPROVED":"REJECTED",id]);
+await c.query("UPDATE quotations SET status=$1 WHERE id=$2",[decision==="APPROVED"?"APPROVED":"REJECTED",id]);\nif(decision==="REJECTED")await c.query("UPDATE rfqs SET status='OPEN' WHERE id=$1 AND status='QUOTED'",[q.rows[0].rfq_id]);
 await c.query("INSERT INTO audit_events(id,actor_user_id,action,entity_type,entity_id,metadata) VALUES($1,$2,'DECISIONED','quotation',$3,$4::jsonb)",[randomUUID(),user.id,id,JSON.stringify({decision,comment})]);
 });
 return json(res,200,{id,status:decision});
@@ -124,7 +124,7 @@ return json(res,200,{items:q.rows});
 if(req.method==="POST"&&url.pathname==="/api/shipments"){
 if(!["ADMIN","MANAGER","OPERATIONS"].includes(user.role))return json(res,403,{code:"FORBIDDEN",message:"Operations role required"});
 const b=await body(req),orderId=String(b.salesOrderId??"").trim(),carrier=String(b.carrier??"").trim(),tracking=b.trackingNumber?String(b.trackingNumber).trim():null,etd=b.etd?String(b.etd):null,eta=b.eta?String(b.eta):null;
-if(!orderId||!carrier||carrier.length>120)return json(res,400,{code:"INVALID_INPUT",message:"salesOrderId and carrier are required"});
+if(!orderId||!carrier||carrier.length>120||etd!==null&&!isoDate(etd)||eta!==null&&!isoDate(eta)||etd!==null&&eta!==null&&etd>eta)return json(res,400,{code:"INVALID_INPUT",message:"salesOrderId and carrier are required; dates must be YYYY-MM-DD and ETD cannot be after ETA"});
 const order=await pool.query<{status:string}>("SELECT status FROM sales_orders WHERE id=$1",[orderId]);
 if(!order.rowCount)return json(res,404,{code:"NOT_FOUND",message:"Sales order not found"});
 if(["CANCELLED","DELIVERED"].includes(order.rows[0].status))return json(res,409,{code:"INVALID_ORDER_STATUS",message:"Order cannot be shipped in its current status"});
