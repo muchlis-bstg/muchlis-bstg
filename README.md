@@ -44,7 +44,7 @@ The UI is intentionally separated from the future API layer so the product can e
 - **Authentication:** secure sessions + RBAC
 - **Quality:** unit, integration, API and E2E tests
 - **CI/CD:** GitHub Actions
-- **Observability:** health checks, structured logs and audit events
+- **Observability:** health checks, request IDs and audit events\n- **Operational audit:** paginated audit queries with entity/action filters
 - **Security:** least privilege, validation, transactional mutations and production approval gates
 
 ## Enterprise security requirements
