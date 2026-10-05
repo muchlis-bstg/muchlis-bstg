@@ -1,0 +1,1 @@
+{"name":"exportos-enterprise","private":true,"version":"0.1.0","type":"module","scripts":{"start":"node apps/api/dist/index.js","dev":"tsx apps/api/src/index.ts","typecheck":"tsc --noEmit","test":"tsx --test"},"dependencies":{"pg":"^8.16.3"},"devDependencies":{"@types/node":"^22.0.0","@types/pg":"^8.15.5","tsx":"^4.0.0","typescript":"^5.0.0"}}
