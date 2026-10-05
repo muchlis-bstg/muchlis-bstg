@@ -1,0 +1,3 @@
+import { Pool, type PoolClient } from "pg";
+export function createPool(){const url=process.env.DATABASE_URL;if(!url)throw new Error("DATABASE_URL is required");return new Pool({connectionString:url,max:10,idleTimeoutMillis:30000});}
+export async function withTransaction<T>(pool:Pool,fn:(client:PoolClient)=>Promise<T>):Promise<T>{const c=await pool.connect();try{await c.query("BEGIN");const r=await fn(c);await c.query("COMMIT");return r}catch(e){await c.query("ROLLBACK");throw e}finally{c.release()}}
