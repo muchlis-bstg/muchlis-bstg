@@ -157,7 +157,7 @@ integration("full export workflow persists through PostgreSQL", async () => {
 
   const audit = await request("/api/audit?limit=100", {}, financeCookie);
   assert.equal(audit.response.status, 200);
-  assert.ok(audit.data.items.length >= 6);
+  assert.ok(audit.data.items.length >= 6);\n\n  const filteredAudit = await request("/api/audit?entityType=shipment&action=STATUS_CHANGED&limit=10", {}, financeCookie);\n  assert.equal(filteredAudit.response.status, 200);\n  assert.ok(filteredAudit.data.pagination);\n  assert.ok(filteredAudit.data.pagination.total >= 2);\n  assert.equal(filteredAudit.data.pagination.hasMore, false);
 });
 
 integration.after(async () => {
