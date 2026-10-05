@@ -2,6 +2,10 @@
   "name": "exportos-enterprise",
   "private": true,
   "version": "0.1.0",
+  "engines": {
+    "node": ">=22 <23",
+    "npm": ">=10"
+  },
   "type": "module",
   "scripts": {
     "start": "node dist/apps/api/src/index.js",
